@@ -10,24 +10,26 @@ import '../util/storage.dart';
 class ServerClient {
   static const int _timeout = 90;
 
-  /// Get request
-
-  static Future<List> get(String url, {BuildContext? context}) async {
-    String? token = Store.userToken;
-
-    Map<String, String> headers = {
-      "Content-Type": "application/json",
+  static Map<String, String> _buildHeaders({bool includeToken = true, bool useForm = false}) {
+    final token = Store.userToken.trim();
+    final headers = {
+      "Content-Type": useForm ? "application/x-www-form-urlencoded" : "application/json",
       "Accept": "application/json",
       "country": "india",
     };
-    if (token.trim().isNotEmpty) {
-      headers.addAll({"authorization": "Bearer $token"});
+    if (includeToken && token.isNotEmpty) {
+      headers["authorization"] = "Bearer $token";
     }
-    log('token $token url $url');
+    return headers;
+  }
+
+  static Future<List> get(String url) async {
+    final headers = _buildHeaders();
+    log('GET → $url');
     try {
-      var response = await http.get(Uri.parse(url), headers: headers).timeout(const Duration(seconds: _timeout));
-      debugPrint('response.body ${response.body} status code ${response.statusCode}');
-      return _response(response, context);
+      final response = await http.get(Uri.parse(url), headers: headers).timeout(Duration(seconds: _timeout));
+      debugPrint('GET response: ${response.statusCode} → ${response.body}');
+      return _handleResponse(response);
     } on SocketException {
       return [600, "No internet"];
     } catch (e) {
@@ -35,28 +37,17 @@ class ServerClient {
     }
   }
 
-  /// Post request
+  static Future<List> post(String url, {Map<String, dynamic>? data, bool useForm = false}) async {
+    final headers = _buildHeaders(useForm: useForm);
+    final body = useForm ? data?.map((key, value) => MapEntry(key, value.toString())) : json.encode(data);
 
-  static Future<List> post(String url, BuildContext context, {Map<String, dynamic>? data, bool post = true}) async {
-    String? token = Store.userToken;
-    // String? token =
-    //     '5dac68d93137d6ff06b582736ac2029a66d0cc1a64a19dce1450b0149ada523cea1377c615cf44c3f521cb2f8748259cfb3baf203baf0778c3546baaea3387ff0ae553396d2485ddcaed769d5224989b4ca50e6e7d5dc1862842deb37dc66a14b027491ce13aca55ea09c8310dd057672f5a7f889e01959d1182fe8a87f77fd6e9cb977d4ec87755292bf12dc603ba7c0928b2b65da6fbfc20a36413875ff41c61ef20810f5558a39e79cf42fed9e0b9';
-    Map<String, String> headers = {
-      "Content-Type": "application/json",
-      "Accept": "application/json",
-      "country": "india",
-    };
-    log('token $token url $url data $data');
-    if (token.trim().isNotEmpty) {
-      headers.addAll({"authorization": "Bearer $token"});
-    }
+    log('POST → $url\nPayload: $data\nForm: $useForm');
     try {
-      var body = json.encode(data);
-      var response = await http
-          .post(Uri.parse(url), body: post ? body : null, headers: headers)
-          .timeout(const Duration(seconds: _timeout));
-      debugPrint('response.body ${response.body} status code ${response.statusCode}');
-      return _response(response, context);
+      final response = await http
+          .post(Uri.parse(url), headers: headers, body: body)
+          .timeout(Duration(seconds: _timeout));
+      debugPrint('POST response: ${response.statusCode} → ${response.body}');
+      return _handleResponse(response);
     } on SocketException {
       return [600, "No internet"];
     } catch (e) {
@@ -64,27 +55,16 @@ class ServerClient {
     }
   }
 
-  /// Put request
-
-  static Future<List> put(String url, BuildContext context, {Map<String, dynamic>? data, bool put = false}) async {
-    String? token = Store.userToken;
-    // String? token =
-    //     '5dac68d93137d6ff06b582736ac2029a66d0cc1a64a19dce1450b0149ada523cea1377c615cf44c3f521cb2f8748259cfb3baf203baf0778c3546baaea3387ff0ae553396d2485ddcaed769d5224989b4ca50e6e7d5dc1862842deb37dc66a14b027491ce13aca55ea09c8310dd057672f5a7f889e01959d1182fe8a87f77fd6e9cb977d4ec87755292bf12dc603ba7c0928b2b65da6fbfc20a36413875ff41c61ef20810f5558a39e79cf42fed9e0b9';
-    Map<String, String> headers = {
-      "Content-Type": "application/json",
-      "Accept": "application/json",
-      "country": "india",
-    };
-    if (token.trim().isNotEmpty) {
-      headers.addAll({"authorization": "Bearer $token"});
-    }
+  static Future<List> put(String url, {Map<String, dynamic>? data, bool put = false}) async {
+    final headers = _buildHeaders();
+    final body = put ? json.encode(data) : null;
+    log('PUT → $url\nPayload: $data');
     try {
-      String? body = json.encode(data);
-      var response = await http
-          .put(Uri.parse(url), body: put == false ? null : body, headers: headers)
-          .timeout(const Duration(seconds: _timeout));
-      debugPrint('response.body ${response.body} status code ${response.statusCode}');
-      return _response(response, context);
+      final response = await http
+          .put(Uri.parse(url), headers: headers, body: body)
+          .timeout(Duration(seconds: _timeout));
+      debugPrint('PUT response: ${response.statusCode} → ${response.body}');
+      return _handleResponse(response);
     } on SocketException {
       return [600, "No internet"];
     } catch (e) {
@@ -92,58 +72,51 @@ class ServerClient {
     }
   }
 
-  /// Delete request
-
-  static Future<List> delete(
-    String url,
-    BuildContext context, {
-    bool delete = false,
-    String? id,
-    Map<String, dynamic>? data,
-  }) async {
-    String? token = Store.userToken;
-    Map<String, String> headers = {
-      "Content-Type": "application/json",
-      "Accept": "application/json",
-      "country": "india",
-      "authorization": "Bearer $token",
-    };
-    String? jsonData = data != null ? json.encode(data) : null;
-
-    var response = await http.delete(Uri.parse(url), headers: headers, body: delete == false ? null : jsonData);
-    debugPrint('response.body ${response.body} status code ${response.statusCode}');
-    return await _response(response, context);
+  static Future<List> delete(String url, {bool delete = false, Map<String, dynamic>? data}) async {
+    final headers = _buildHeaders();
+    final body = delete ? json.encode(data) : null;
+    log('DELETE → $url\nPayload: $data');
+    try {
+      final response = await http
+          .delete(Uri.parse(url), headers: headers, body: body)
+          .timeout(Duration(seconds: _timeout));
+      debugPrint('DELETE response: ${response.statusCode} → ${response.body}');
+      return _handleResponse(response);
+    } on SocketException {
+      return [600, "No internet"];
+    } catch (e) {
+      return [600, e.toString()];
+    }
   }
 
-  // ------------------- ERROR HANDLING ------------------- \\
+  static Future<List> _handleResponse(http.Response response) async {
+    final statusCode = response.statusCode;
+    final contentType = response.headers['content-type'] ?? '';
+    final isJson = contentType.contains('application/json');
+    final body = isJson && response.body.isNotEmpty ? jsonDecode(response.body) : response.body;
 
-  static Future<List> _response(http.Response response, BuildContext? context) async {
-    switch (response.statusCode) {
+    switch (statusCode) {
       case 200:
-        return [response.statusCode, jsonDecode(response.body)];
       case 201:
-        return [response.statusCode, jsonDecode(response.body)];
+        return [statusCode, body];
       case 400:
-        return [response.statusCode, jsonDecode(response.body), jsonDecode(response.body)["message"]];
+        return [statusCode, body, isJson ? body["message"] : body];
       case 401:
-        return [response.statusCode, jsonDecode(response.body)["message"]];
       case 403:
-        return [response.statusCode, jsonDecode(response.body)["message"]];
-      case 404:
-        return [response.statusCode, "You're using unregistered application"];
       case 500:
-        return [response.statusCode, jsonDecode(response.body)["message"]];
-      case 502:
-        return [response.statusCode, "Server Crashed or under maintenance"];
       case 503:
-        return [response.statusCode, jsonDecode(response.body)["message"]];
+        return [statusCode, isJson ? body["message"] : body];
+      case 404:
+        return [statusCode, "You're using unregistered application"];
+      case 502:
+        return [statusCode, "Server Crashed or under maintenance"];
       case 504:
         return [
-          response.statusCode,
+          statusCode,
           {"message": "Request timeout", "code": 504, "status": "Cancelled"},
         ];
       default:
-        return [response.statusCode, jsonDecode(response.body)["message"]];
+        return [statusCode, isJson ? body["message"] : body];
     }
   }
 }

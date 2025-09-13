@@ -1,8 +1,8 @@
-mixin Urls {
-  static const String baseUrl = 'https://api-v1.findzzy.com';
+class Urls {
+  static const String baseUrl = 'https://flutter-amr.noviindus.in/api/';
 
   // Auth
-  static const String login = '/user/send-otp';
+  static const String login = '${baseUrl}Login';
   static const String verifyOtp = '/user/verify-otp';
   static const String register = '/user/register';
 

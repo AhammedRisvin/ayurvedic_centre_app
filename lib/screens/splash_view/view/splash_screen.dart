@@ -21,7 +21,7 @@ class _SplashViewState extends State<SplashView> {
   void _navigateToNextScreen() {
     Future.delayed(const Duration(seconds: 2), () {
       if (Store.userToken.isNotEmpty) {
-        // Navigator.pushReplacementNamed(context, AppRoutes.bottomNav);
+        Navigator.pushReplacementNamed(context, AppRoutes.home);
       } else {
         Navigator.pushReplacementNamed(context, AppRoutes.login);
       }

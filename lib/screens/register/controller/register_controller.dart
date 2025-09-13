@@ -1,4 +1,9 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
+
+import '../../../core/network/api_client.dart';
+import '../../../core/network/api_endpoints.dart';
 
 class RegisterProvider extends ChangeNotifier {
   // Controllers for form fields
@@ -25,40 +30,52 @@ class RegisterProvider extends ChangeNotifier {
   // Loading states
   final bool _isLoading = false;
   bool _isSaving = false;
+  bool _isBranchLoading = false;
+  bool _isTreatmentLoading = false;
 
   // Selection states
   PaymentType _selectedPayment = PaymentType.cash;
   final List<Treatment> _treatments = [];
   String? _selectedLocation;
   String? _selectedBranch;
+  Branch? _selectedBranchObject;
 
-  // Sample data (replace with your API data)
+  // Dynamic data from API
+  List<Branch> _branches = [];
+  List<TreatmentOption> _availableTreatments = [];
+
+  // Error states for API calls
+  bool _hasBranchError = false;
+  bool _hasTreatmentError = false;
+  String? _branchErrorMessage;
+  String? _treatmentErrorMessage;
+
+  // Static locations (assuming these don't come from API)
   final List<String> _locations = ['Kozhikode', 'Kochi', 'Thiruvananthapuram', 'Thrissur'];
-  final List<String> _branches = ['Main Branch', 'City Center', 'Mall Branch', 'Express Branch'];
-  final List<String> _availableTreatments = [
-    'Couple Combo Package',
-    'Ayurvedic Massage',
-    'Body Therapy',
-    'Facial Treatment',
-    'Spa Package',
-  ];
 
   // Getters
   Map<String, String?> get fieldErrors => _fieldErrors;
   String? get generalError => _generalError;
   bool get isLoading => _isLoading;
   bool get isSaving => _isSaving;
+  bool get isBranchLoading => _isBranchLoading;
+  bool get isTreatmentLoading => _isTreatmentLoading;
   PaymentType get selectedPayment => _selectedPayment;
   List<Treatment> get treatments => _treatments;
   String? get selectedLocation => _selectedLocation;
   String? get selectedBranch => _selectedBranch;
+  Branch? get selectedBranchObject => _selectedBranchObject;
   List<String> get locations => _locations;
-  List<String> get branches => _branches;
-  List<String> get availableTreatments => _availableTreatments;
+  List<Branch> get branches => _branches;
+  List<TreatmentOption> get availableTreatments => _availableTreatments;
+  bool get hasBranchError => _hasBranchError;
+  bool get hasTreatmentError => _hasTreatmentError;
+  String? get branchErrorMessage => _branchErrorMessage;
+  String? get treatmentErrorMessage => _treatmentErrorMessage;
 
   RegisterProvider() {
     _initializeListeners();
-    _addDefaultTreatment();
+    _loadInitialData();
   }
 
   void _initializeListeners() {
@@ -68,8 +85,8 @@ class RegisterProvider extends ChangeNotifier {
     advanceAmountController.addListener(_calculateBalance);
   }
 
-  void _addDefaultTreatment() {
-    _treatments.add(Treatment(id: 1, name: 'Couple Combo Package', maleCount: 2, femaleCount: 2));
+  Future<void> _loadInitialData() async {
+    await getBranchFn();
   }
 
   // Validation methods
@@ -174,17 +191,13 @@ class RegisterProvider extends ChangeNotifier {
     _selectedLocation = location;
     locationController.text = location;
     clearFieldError('location');
-
-    // Clear branch when location changes
-    _selectedBranch = null;
-    branchController.clear();
-
     notifyListeners();
   }
 
-  void setBranch(String branch) {
-    _selectedBranch = branch;
-    branchController.text = branch;
+  void setBranch(Branch branch) {
+    _selectedBranchObject = branch;
+    _selectedBranch = branch.name ?? '';
+    branchController.text = branch.name ?? '';
     clearFieldError('branch');
     notifyListeners();
   }
@@ -206,33 +219,34 @@ class RegisterProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Treatment management
-  void addTreatment() {
-    _treatments.add(Treatment(id: _treatments.length + 1, name: 'Select Treatment', maleCount: 1, femaleCount: 1));
+  // Treatment management methods
+  void addTreatmentWithDetails(TreatmentOption treatmentOption, int maleCount, int femaleCount) {
+    final newTreatment = Treatment(
+      id: treatmentOption.id,
+      name: treatmentOption.name,
+      maleCount: maleCount,
+      femaleCount: femaleCount,
+    );
+    _treatments.add(newTreatment);
+    clearFieldError('treatments');
+
+    log('Treatment added. Total treatments: ${_treatments.length}');
     notifyListeners();
   }
 
   void removeTreatment(int index) {
-    if (_treatments.length > 1) {
+    if (index < _treatments.length) {
       _treatments.removeAt(index);
       notifyListeners();
     }
   }
 
-  void updateTreatmentCount(int treatmentIndex, int genderType, int count) {
-    if (treatmentIndex < _treatments.length) {
-      if (genderType == 0) {
-        _treatments[treatmentIndex].maleCount = count;
-      } else {
-        _treatments[treatmentIndex].femaleCount = count;
-      }
-      notifyListeners();
-    }
-  }
-
-  void updateTreatmentName(int index, String name) {
+  void updateTreatment(int index, TreatmentOption treatmentOption, int maleCount, int femaleCount) {
     if (index < _treatments.length) {
-      _treatments[index].name = name;
+      _treatments[index].id = treatmentOption.id;
+      _treatments[index].name = treatmentOption.name;
+      _treatments[index].maleCount = maleCount;
+      _treatments[index].femaleCount = femaleCount;
       notifyListeners();
     }
   }
@@ -285,12 +299,6 @@ class RegisterProvider extends ChangeNotifier {
       isValid = false;
     }
 
-    final locationError = validateLocation(_selectedLocation);
-    if (locationError != null) {
-      _setFieldError('location', locationError);
-      isValid = false;
-    }
-
     final branchError = validateBranch(_selectedBranch);
     if (branchError != null) {
       _setFieldError('branch', branchError);
@@ -338,7 +346,7 @@ class RegisterProvider extends ChangeNotifier {
 
   Future<void> saveRegistration() async {
     if (!validateForm()) {
-      _setGeneralError('Please fix the errors above');
+      _setGeneralError('Please fix the errors below');
       return;
     }
 
@@ -346,16 +354,8 @@ class RegisterProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 2));
-
-      final formData = _collectFormData();
-
-      // Here you would typically call your API
-      await _submitToAPI(formData);
-
+      await registerFn();
       _setGeneralError(null);
-      // You can add a success callback or navigation here
     } catch (e) {
       _setGeneralError('Failed to save registration: ${e.toString()}');
     } finally {
@@ -364,33 +364,174 @@ class RegisterProvider extends ChangeNotifier {
     }
   }
 
-  Map<String, dynamic> _collectFormData() {
-    return {
-      'name': nameController.text.trim(),
-      'whatsapp': whatsappController.text.trim(),
-      'address': addressController.text.trim(),
-      'location': _selectedLocation,
-      'branch': _selectedBranch,
-      'treatments': _treatments.map((t) => t.toJson()).toList(),
-      'totalAmount': double.tryParse(totalAmountController.text) ?? 0,
-      'discountAmount': double.tryParse(discountAmountController.text) ?? 0,
-      'advanceAmount': double.tryParse(advanceAmountController.text) ?? 0,
-      'balanceAmount': double.tryParse(balanceAmountController.text) ?? 0,
-      'paymentMethod': _selectedPayment.toString().split('.').last,
-      'treatmentDate': treatmentDateController.text,
-      'treatmentTime': '${hourController.text}:${minuteController.text}',
-      'createdAt': DateTime.now().toIso8601String(),
-    };
+  // API Calls
+  Future<void> registerFn() async {
+    try {
+      final data = {
+        "name": nameController.text.trim(),
+        "excecutive": "", // Add the missing field that the server expects
+        "payment": _selectedPayment.toString().split('.').last,
+        "phone": whatsappController.text.trim(),
+        "address": addressController.text.trim(),
+        "total_amount": (double.tryParse(totalAmountController.text) ?? 0.0).round(),
+        "discount_amount": (double.tryParse(discountAmountController.text) ?? 0.0).round(),
+        "advance_amount": (double.tryParse(advanceAmountController.text) ?? 0.0).round(),
+        "balance_amount": (double.tryParse(balanceAmountController.text) ?? 0.0).round(),
+        "date_nd_time": "${treatmentDateController.text}-${hourController.text}:${minuteController.text}",
+        "id": "",
+        "male": _getMaleCountsString(),
+        "female": _getFemaleCountsString(),
+        "branch": _selectedBranchObject?.id.toString() ?? "",
+        "treatments": _getTreatmentIdsString(),
+      };
+
+      final response = await ServerClient.post(Urls.registerPatientUrl, data: data, useForm: true);
+      final statusCode = response[0];
+      final responseBody = response[1];
+
+      if (statusCode >= 200 && statusCode < 300 && responseBody['status'] == true) {
+        log('Registration successful: $responseBody');
+      } else {
+        throw Exception(responseBody['message'] ?? 'Registration failed');
+      }
+    } catch (e) {
+      debugPrint('Registration error: $e');
+      rethrow;
+    }
   }
 
-  Future<void> _submitToAPI(Map<String, dynamic> data) async {
-    // Replace with your actual API call
-    print('Submitting data: $data');
+  // Fixed getBranchFn method
+  Future<void> getBranchFn() async {
+    _isBranchLoading = true;
+    _hasBranchError = false;
+    _branchErrorMessage = null;
+    notifyListeners();
 
-    // Simulate potential API errors
-    if (data['name'] == 'error') {
-      throw Exception('Server error occurred');
+    try {
+      final response = await ServerClient.get(Urls.getBranchUrl);
+      log('Branch API Response Status: ${response.first}');
+      log('Branch API Response Body: ${response.last}');
+
+      if (response.first >= 200 && response.first < 300) {
+        try {
+          final raw = response.last;
+          if (raw != null && raw is Map<String, dynamic>) {
+            // Parse using BranchModel
+            final branchModel = BranchModel.fromJson(raw);
+
+            if (branchModel.status == true) {
+              if (branchModel.branches != null && branchModel.branches!.isNotEmpty) {
+                _branches = branchModel.branches!;
+                log('Branches loaded successfully: ${_branches.length} branches');
+                for (var branch in _branches) {
+                  log('Branch: ${branch.name} (ID: ${branch.id}, Location: ${branch.location})');
+                }
+              } else {
+                log('No branches found in response');
+                _branches = [];
+              }
+            } else {
+              throw Exception(branchModel.message ?? 'Failed to load branches');
+            }
+          } else {
+            throw Exception('Invalid response format: response is null or not a Map');
+          }
+        } catch (e) {
+          log('Branch parsing error: $e');
+          _hasBranchError = true;
+          _branchErrorMessage = 'Failed to parse branch data: ${e.toString()}';
+        }
+      } else {
+        _hasBranchError = true;
+        _branchErrorMessage = 'Failed to load branches from server (Status: ${response.first})';
+        log('Branch API failed with status: ${response.first}');
+      }
+    } catch (e) {
+      debugPrint('Error in getBranchFn: $e');
+      _hasBranchError = true;
+      _branchErrorMessage = 'Network error: ${e.toString()}';
+    } finally {
+      _isBranchLoading = false;
+      notifyListeners();
     }
+  }
+
+  Future<void> getTreatmentFn() async {
+    _isTreatmentLoading = true;
+    _hasTreatmentError = false;
+    _treatmentErrorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await ServerClient.get(Urls.treatmentList);
+      log('Treatment API Response Status: ${response.first}');
+      log('Treatment API Response Body: ${response.last}');
+
+      if (response.first >= 200 && response.first < 300) {
+        try {
+          final raw = response.last;
+          if (raw != null && raw is Map<String, dynamic>) {
+            // Try different possible response structures
+            List<dynamic> treatmentData = [];
+
+            if (raw['status'] == true) {
+              if (raw['treatments'] != null) {
+                treatmentData = raw['treatments'];
+              } else if (raw['data'] != null) {
+                treatmentData = raw['data'];
+              } else {
+                throw Exception('No treatment data found in response');
+              }
+
+              _availableTreatments = treatmentData.map((json) => TreatmentOption.fromJson(json)).toList();
+              log('Treatments parsed successfully: ${_availableTreatments.length} treatments loaded');
+              for (var treatment in _availableTreatments) {
+                log('Treatment: ${treatment.name} (ID: ${treatment.id})');
+              }
+            } else {
+              throw Exception(raw['message'] ?? 'Failed to load treatments');
+            }
+          } else {
+            throw Exception('Invalid response format');
+          }
+        } catch (e) {
+          log('Treatment parsing error: $e');
+          _hasTreatmentError = true;
+          _treatmentErrorMessage = 'Failed to parse treatment data: ${e.toString()}';
+        }
+      } else {
+        _hasTreatmentError = true;
+        _treatmentErrorMessage = 'Failed to load treatments from server (Status: ${response.first})';
+      }
+    } catch (e) {
+      debugPrint('Error in getTreatmentFn: $e');
+      _hasTreatmentError = true;
+      _treatmentErrorMessage = 'Network error: ${e.toString()}';
+    } finally {
+      _isTreatmentLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> retryLoadBranches() async {
+    await getBranchFn();
+  }
+
+  Future<void> retryLoadTreatments() async {
+    await getTreatmentFn();
+  }
+
+  // Helper methods for API data formatting
+  String _getMaleCountsString() {
+    return _treatments.map((t) => t.maleCount.toString()).join(',');
+  }
+
+  String _getFemaleCountsString() {
+    return _treatments.map((t) => t.femaleCount.toString()).join(',');
+  }
+
+  String _getTreatmentIdsString() {
+    return _treatments.map((t) => t.id.toString()).join(',');
   }
 
   @override
@@ -415,9 +556,106 @@ class RegisterProvider extends ChangeNotifier {
 // Payment enum
 enum PaymentType { cash, card, upi }
 
-// Treatment model
-class Treatment {
+// Updated Branch model to match your new BranchModel structure
+class Branch {
+  final int? id;
+  final String? name;
+  final int? patientsCount;
+  final String? location;
+  final String? phone;
+  final String? mail;
+  final String? address;
+  final String? gst;
+  final bool? isActive;
+
+  Branch({
+    this.id,
+    this.name,
+    this.patientsCount,
+    this.location,
+    this.phone,
+    this.mail,
+    this.address,
+    this.gst,
+    this.isActive,
+  });
+
+  factory Branch.fromJson(Map<String, dynamic> json) {
+    return Branch(
+      id: json['id'] as int?,
+      name: json['name'] as String?,
+      patientsCount: json['patients_count'] as int?,
+      location: json['location'] as String?,
+      phone: json['phone']?.toString(),
+      mail: json['mail'] as String?,
+      address: json['address'] as String?,
+      gst: json['gst'] as String?,
+      isActive: json['is_active'] as bool?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'patients_count': patientsCount,
+      'location': location,
+      'phone': phone,
+      'mail': mail,
+      'address': address,
+      'gst': gst,
+      'is_active': isActive,
+    };
+  }
+}
+
+// BranchModel for API response
+class BranchModel {
+  final bool? status;
+  final String? message;
+  final List<Branch>? branches;
+
+  BranchModel({this.status, this.message, this.branches});
+
+  factory BranchModel.fromJson(Map<String, dynamic> json) {
+    return BranchModel(
+      status: json['status'] as bool?,
+      message: json['message'] as String?,
+      branches: (json['branches'] as List<dynamic>?)?.map((e) => Branch.fromJson(e)).toList(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'status': status, 'message': message, 'branches': branches?.map((e) => e.toJson()).toList()};
+  }
+}
+
+// Treatment Option model (from API)
+class TreatmentOption {
   final int id;
+  final String name;
+  final String? description;
+  final String? price;
+
+  TreatmentOption({required this.id, required this.name, this.description, this.price});
+
+  factory TreatmentOption.fromJson(Map<String, dynamic> json) {
+    return TreatmentOption(
+      id: json['id'] ?? 0,
+      name: json['name'] ?? '',
+      description: json['description'],
+      price: json['price'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'id': id, 'name': name, 'description': description, 'price': price};
+  }
+}
+
+// Treatment model (selected by user)
+class Treatment {
+  int id;
   String name;
   int maleCount;
   int femaleCount;

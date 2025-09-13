@@ -8,18 +8,14 @@ import '../controller/register_controller.dart';
 import 'widget/payment_selection_widget.dart';
 import 'widget/treatment_selection_widget.dart';
 
-class RegisterView extends StatelessWidget {
+class RegisterView extends StatefulWidget {
   const RegisterView({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider(create: (context) => RegisterProvider(), child: const _RegisterViewContent());
-  }
+  State<RegisterView> createState() => _RegisterViewState();
 }
 
-class _RegisterViewContent extends StatelessWidget {
-  const _RegisterViewContent();
-
+class _RegisterViewState extends State<RegisterView> {
   @override
   Widget build(BuildContext context) {
     return Consumer<RegisterProvider>(
@@ -117,7 +113,7 @@ class _RegisterViewContent extends StatelessWidget {
           controller: provider.nameController,
           keyboardType: TextInputType.name,
           error: provider.fieldErrors['name'],
-          onChanged: (value) => provider.clearFieldError != null ? {} : null,
+          onChanged: (value) => provider.clearFieldError('name'),
           context: context,
         ),
         _buildFormField(
@@ -126,6 +122,7 @@ class _RegisterViewContent extends StatelessWidget {
           controller: provider.whatsappController,
           keyboardType: TextInputType.phone,
           error: provider.fieldErrors['whatsapp'],
+          onChanged: (value) => provider.clearFieldError('whatsapp'),
           context: context,
         ),
         _buildFormField(
@@ -134,6 +131,7 @@ class _RegisterViewContent extends StatelessWidget {
           controller: provider.addressController,
           keyboardType: TextInputType.streetAddress,
           error: provider.fieldErrors['address'],
+          onChanged: (value) => provider.clearFieldError('address'),
           context: context,
         ),
       ],
@@ -154,18 +152,100 @@ class _RegisterViewContent extends StatelessWidget {
           error: provider.fieldErrors['location'],
           context: context,
         ),
-        _buildFormField(
-          label: 'Branch',
-          hintText: 'Select the branch',
-          controller: provider.branchController,
-          keyboardType: TextInputType.text,
-          readOnly: true,
-          onTap: () => _showBranchPicker(provider),
-          suffixIcon: Icon(Icons.keyboard_arrow_down, color: AppColor.greenColor),
-          error: provider.fieldErrors['branch'],
-          context: context,
-        ),
+        _buildBranchField(provider, context),
       ],
+    );
+  }
+
+  Widget _buildBranchField(RegisterProvider provider, BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          text(text: 'Branch', size: 16, fontWeight: FontWeight.w400, letterSpacing: 1.4),
+          const SizeBoxH(6),
+          buildCommonTextFormField(
+            hintText: 'Select the branch',
+            keyboardType: TextInputType.text,
+            textInputAction: TextInputAction.next,
+            controller: provider.branchController,
+            readOnly: true,
+            context: context,
+            validator: (p0) => null,
+            obscureText: false,
+            onTap: () => _showBranchPicker(provider),
+            onFieldSubmitted: (p0) {},
+            suffixIcon: _buildBranchFieldSuffix(provider),
+          ),
+          if (provider.fieldErrors['branch'] != null) _buildFieldError(provider.fieldErrors['branch']!),
+          if (provider.hasBranchError) _buildBranchErrorWidget(provider),
+          const SizeBoxH(20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBranchFieldSuffix(RegisterProvider provider) {
+    if (provider.isBranchLoading) {
+      return Container(
+        width: 20,
+        height: 20,
+        margin: const EdgeInsets.all(12),
+        child: CircularProgressIndicator(strokeWidth: 2, color: AppColor.appPrimary),
+      );
+    }
+
+    if (provider.hasBranchError) {
+      return Icon(Icons.error_outline, color: Colors.red);
+    }
+
+    return Icon(Icons.keyboard_arrow_down, color: AppColor.greenColor);
+  }
+
+  Widget _buildBranchErrorWidget(RegisterProvider provider) {
+    return Container(
+      margin: const EdgeInsets.only(top: 8, left: 5, right: 5),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.red.withOpacity(0.1),
+        border: Border.all(color: Colors.red.withOpacity(0.5)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline, color: Colors.red, size: 20),
+          const SizeBoxV(8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                text(text: 'Failed to load branches', size: 12, color: Colors.red, fontWeight: FontWeight.w500),
+                if (provider.branchErrorMessage != null)
+                  text(
+                    text: provider.branchErrorMessage!,
+                    size: 11,
+                    color: Colors.red.withOpacity(0.8),
+                    fontWeight: FontWeight.w400,
+                  ),
+              ],
+            ),
+          ),
+          const SizeBoxV(8),
+          GestureDetector(
+            onTap: () => provider.retryLoadBranches(),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: Colors.red.withOpacity(0.3)),
+              ),
+              child: text(text: 'Retry', size: 11, color: Colors.red, fontWeight: FontWeight.w500),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -177,15 +257,8 @@ class _RegisterViewContent extends StatelessWidget {
           hintText: '0.00',
           controller: provider.totalAmountController,
           keyboardType: TextInputType.numberWithOptions(decimal: true),
-          error: provider.fieldErrors['totalAmount'],
-          context: context,
-        ),
-        _buildFormField(
-          label: 'Discount Amount',
-          hintText: '0.00',
-          controller: provider.discountAmountController,
-          keyboardType: TextInputType.numberWithOptions(decimal: true),
           error: provider.fieldErrors['discountAmount'],
+          onChanged: (value) => provider.clearFieldError('discountAmount'),
           context: context,
         ),
       ],
@@ -201,6 +274,7 @@ class _RegisterViewContent extends StatelessWidget {
           controller: provider.advanceAmountController,
           keyboardType: TextInputType.numberWithOptions(decimal: true),
           error: provider.fieldErrors['advanceAmount'],
+          onChanged: (value) => provider.clearFieldError('advanceAmount'),
           context: context,
         ),
         _buildFormField(
@@ -239,7 +313,6 @@ class _RegisterViewContent extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizeBoxH(20),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: text(text: 'Treatment Time', size: 16, fontWeight: FontWeight.w400, letterSpacing: 1.4),
@@ -369,7 +442,7 @@ class _RegisterViewContent extends StatelessWidget {
 
   void _showLocationPicker(RegisterProvider provider) {
     showDialog(
-      context: provider.formKey.currentContext!,
+      context: context,
       builder: (context) => AlertDialog(
         title: const Text('Select Location'),
         content: SizedBox(
@@ -395,13 +468,28 @@ class _RegisterViewContent extends StatelessWidget {
   }
 
   void _showBranchPicker(RegisterProvider provider) {
-    if (provider.selectedLocation == null) {
-      _showErrorSnackBar(provider.formKey.currentContext!, 'Please select location first');
+    if (provider.isBranchLoading) {
+      _showInfoSnackBar(context, 'Loading branches, please wait...');
+      return;
+    }
+
+    if (provider.hasBranchError) {
+      _showErrorDialog(
+        context,
+        'Error Loading Branches',
+        provider.branchErrorMessage ?? 'Failed to load branches',
+        () => provider.retryLoadBranches(),
+      );
+      return;
+    }
+
+    if (provider.branches.isEmpty) {
+      _showErrorSnackBar(context, 'No branches available');
       return;
     }
 
     showDialog(
-      context: provider.formKey.currentContext!,
+      context: context,
       builder: (context) => AlertDialog(
         title: const Text('Select Branch'),
         content: SizedBox(
@@ -412,8 +500,9 @@ class _RegisterViewContent extends StatelessWidget {
             itemBuilder: (context, index) {
               final branch = provider.branches[index];
               return ListTile(
-                title: Text(branch),
-                selected: provider.selectedBranch == branch,
+                title: Text(branch.name ?? ''),
+                subtitle: branch.location != null ? Text(branch.location!) : null,
+                selected: provider.selectedBranchObject?.id == branch.id,
                 onTap: () {
                   provider.setBranch(branch);
                   Navigator.pop(context);
@@ -428,7 +517,7 @@ class _RegisterViewContent extends StatelessWidget {
 
   void _selectDate(RegisterProvider provider) async {
     final DateTime? picked = await showDatePicker(
-      context: provider.formKey.currentContext!,
+      context: context,
       initialDate: DateTime.now(),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
@@ -444,7 +533,7 @@ class _RegisterViewContent extends StatelessWidget {
         : List.generate(60, (index) => index.toString().padLeft(2, '0'));
 
     showDialog(
-      context: provider.formKey.currentContext!,
+      context: context,
       builder: (context) => AlertDialog(
         title: Text('Select ${type.capitalize()}'),
         content: SizedBox(
@@ -471,6 +560,32 @@ class _RegisterViewContent extends StatelessWidget {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating));
+  }
+
+  void _showInfoSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: AppColor.appPrimary, behavior: SnackBarBehavior.floating),
+    );
+  }
+
+  void _showErrorDialog(BuildContext context, String title, String message, VoidCallback onRetry) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              onRetry();
+            },
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
   }
 }
 

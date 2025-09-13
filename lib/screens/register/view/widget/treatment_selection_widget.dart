@@ -1,41 +1,41 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../../core/util/app_color.dart';
 import '../../../../core/util/common_widgets.dart';
 import '../../../../core/util/sized_box.dart';
+import '../../controller/register_controller.dart';
+import 'treatment_dialog_widget.dart';
 
-class TreatmentSelectionWidget extends StatefulWidget {
-  // treatmentIndex, genderType (0=male, 1=female), count
-
+class TreatmentSelectionWidget extends StatelessWidget {
   const TreatmentSelectionWidget({super.key});
 
   @override
-  State<TreatmentSelectionWidget> createState() => _TreatmentSelectionWidgetState();
-}
-
-class _TreatmentSelectionWidgetState extends State<TreatmentSelectionWidget> {
-  // Default treatment for demo purposes
-  List<Treatment> treatments = [
-    Treatment(id: 1, name: 'Couple Combo Package (Rejuvenasjhdvasjhd asdhgasd)', maleCount: 2, femaleCount: 2),
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionTitle(),
-        const SizeBoxH(6),
-        ...treatments.asMap().entries.map((entry) => _buildTreatmentCard(entry.key, entry.value)),
-        const SizeBoxH(10),
-        _buildAddTreatmentButton(),
-        const SizeBoxH(20),
-      ],
+    return Consumer<RegisterProvider>(
+      builder: (context, provider, child) {
+        log('lengthh. ${provider.treatments.length}');
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionTitle(),
+            const SizeBoxH(6),
+            // Show treatment cards only if treatments exist
+            if (provider.treatments.isNotEmpty) ...[
+              ...provider.treatments.asMap().entries.map(
+                (entry) => _buildTreatmentCard(context, entry.key, entry.value, provider),
+              ),
+              const SizeBoxH(10),
+            ],
+            _buildAddTreatmentButton(context),
+            // Show error if treatments validation fails
+            if (provider.fieldErrors['treatments'] != null) _buildTreatmentError(provider.fieldErrors['treatments']!),
+            const SizeBoxH(20),
+          ],
+        );
+      },
     );
   }
 
@@ -46,7 +46,7 @@ class _TreatmentSelectionWidgetState extends State<TreatmentSelectionWidget> {
     );
   }
 
-  Widget _buildTreatmentCard(int index, Treatment treatment) {
+  Widget _buildTreatmentCard(BuildContext context, int index, Treatment treatment, RegisterProvider provider) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -61,9 +61,9 @@ class _TreatmentSelectionWidgetState extends State<TreatmentSelectionWidget> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildTreatmentHeader(index, treatment),
+                _buildTreatmentHeader(context, index, treatment, provider),
                 const SizeBoxH(14),
-                _buildGenderCountRow(index, treatment),
+                _buildGenderCountRow(context, index, treatment, provider),
               ],
             ),
           ),
@@ -72,7 +72,7 @@ class _TreatmentSelectionWidgetState extends State<TreatmentSelectionWidget> {
     );
   }
 
-  Widget _buildTreatmentHeader(int index, Treatment treatment) {
+  Widget _buildTreatmentHeader(BuildContext context, int index, Treatment treatment, RegisterProvider provider) {
     return Row(
       children: [
         Expanded(
@@ -81,13 +81,13 @@ class _TreatmentSelectionWidgetState extends State<TreatmentSelectionWidget> {
             size: 16,
             fontWeight: FontWeight.w300,
             color: AppColor.black,
-            maxLines: 1,
+            maxLines: 2,
             overFlow: TextOverflow.ellipsis,
           ),
         ),
         const SizeBoxV(10),
         GestureDetector(
-          onTap: () {},
+          onTap: () => _removeTreatment(context, index, provider),
           child: CircleAvatar(
             radius: 14,
             backgroundColor: const Color(0xffF21E1E).withOpacity(0.5),
@@ -98,28 +98,28 @@ class _TreatmentSelectionWidgetState extends State<TreatmentSelectionWidget> {
     );
   }
 
-  Widget _buildGenderCountRow(int index, Treatment treatment) {
+  Widget _buildGenderCountRow(BuildContext context, int index, Treatment treatment, RegisterProvider provider) {
     return Row(
       children: [
         Expanded(
           child: Row(
             children: [
-              _buildGenderCounter(index, 'Male', treatment.maleCount, 0),
+              _buildGenderCounter('Male', treatment.maleCount),
               const Spacer(),
-              _buildGenderCounter(index, 'Female', treatment.femaleCount, 1),
+              _buildGenderCounter('Female', treatment.femaleCount),
             ],
           ),
         ),
         const SizeBoxV(40),
         GestureDetector(
-          onTap: () {},
+          onTap: () => _editTreatment(context, index),
           child: Icon(Icons.edit_outlined, color: AppColor.greenColor),
         ),
       ],
     );
   }
 
-  Widget _buildGenderCounter(int treatmentIndex, String gender, int count, int genderType) {
+  Widget _buildGenderCounter(String gender, int count) {
     return Row(
       children: [
         text(text: gender, size: 15, fontWeight: FontWeight.w400, color: AppColor.appPrimary),
@@ -136,7 +136,7 @@ class _TreatmentSelectionWidgetState extends State<TreatmentSelectionWidget> {
     );
   }
 
-  Widget _buildAddTreatmentButton() {
+  Widget _buildAddTreatmentButton(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: button(
@@ -147,188 +147,59 @@ class _TreatmentSelectionWidgetState extends State<TreatmentSelectionWidget> {
         height: 50,
         fontSize: 15,
         width: double.infinity,
-        onTap: () {
-          showCustomDialog(context);
-        },
+        onTap: () => _showAddTreatmentDialog(context),
         isLoading: false,
       ),
     );
   }
 
-  void showCustomDialog(BuildContext context) {
+  Widget _buildTreatmentError(String error) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 20, top: 8),
+      child: text(text: error, size: 12, color: Colors.red, fontWeight: FontWeight.w400),
+    );
+  }
+
+  void _showAddTreatmentDialog(BuildContext context) {
     showDialog(
       context: context,
       barrierDismissible: true,
       builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizeBoxH(40),
-                  text(text: 'Choose Treatment', size: 16, fontWeight: FontWeight.w400, letterSpacing: 1.4),
-                  SizeBoxH(6),
-                  buildCommonTextFormField(
-                    hintText: 'Choose preferred treatment',
-                    keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.next,
-                    controller: TextEditingController(),
-                    context: context,
-                    validator: (p0) {
-                      return null;
-                    },
-                    obscureText: false,
-                    onTap: () {},
-                    onFieldSubmitted: (p0) {},
-                    suffixIcon: Icon(Icons.keyboard_arrow_down_rounded, color: AppColor.appPrimary),
-                  ),
-                  SizeBoxH(20),
-                  text(text: 'Add Patients', size: 16, fontWeight: FontWeight.w400, letterSpacing: 1.4),
-                  SizeBoxH(6),
-                  Row(
-                    children: [
-                      Container(
-                        height: 50,
-                        width: 124,
-                        padding: EdgeInsets.only(left: 10),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8.53),
-                          border: Border.all(color: AppColor.black.withOpacity(0.25)),
-                          color: Color(0XFFD9D9D9).withOpacity(0.25),
-                        ),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: text(text: 'Male', fontWeight: FontWeight.w300, size: 14),
-                        ),
-                      ),
-                      Spacer(),
-                      Container(
-                        height: 40,
-                        width: 40,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(100),
-                          color: AppColor.appPrimary,
-                          boxShadow: [
-                            BoxShadow(color: AppColor.appPrimary.withOpacity(0.2), blurRadius: 4, offset: Offset(2, 2)),
-                          ],
-                        ),
-                        child: Icon(Icons.remove, color: AppColor.white),
-                      ),
-                      SizeBoxV(8),
-                      Container(
-                        height: 44,
-                        width: 44,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8.53),
-                          border: Border.all(color: AppColor.black.withOpacity(0.25)),
-                        ),
-                        child: Center(
-                          child: text(text: '1', fontWeight: FontWeight.w500, size: 18),
-                        ),
-                      ),
-                      SizeBoxV(8),
-                      Container(
-                        height: 40,
-                        width: 40,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(100),
-                          color: AppColor.appPrimary,
-                          boxShadow: [
-                            BoxShadow(color: AppColor.appPrimary.withOpacity(0.2), blurRadius: 4, offset: Offset(2, 2)),
-                          ],
-                        ),
-                        child: Icon(Icons.add, color: AppColor.white),
-                      ),
-                    ],
-                  ),
-                  SizeBoxH(22),
-                  Row(
-                    children: [
-                      Container(
-                        height: 50,
-                        width: 124,
-                        padding: EdgeInsets.only(left: 10),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8.53),
-                          border: Border.all(color: AppColor.black.withOpacity(0.25)),
-                          color: Color(0XFFD9D9D9).withOpacity(0.25),
-                        ),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: text(text: 'Female', fontWeight: FontWeight.w300, size: 14),
-                        ),
-                      ),
-                      Spacer(),
-                      Container(
-                        height: 40,
-                        width: 40,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(100),
-                          color: AppColor.appPrimary,
-                          boxShadow: [
-                            BoxShadow(color: AppColor.appPrimary.withOpacity(0.2), blurRadius: 4, offset: Offset(2, 2)),
-                          ],
-                        ),
-                        child: Icon(Icons.remove, color: AppColor.white),
-                      ),
-                      SizeBoxV(8),
-                      Container(
-                        height: 44,
-                        width: 44,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8.53),
-                          border: Border.all(color: AppColor.black.withOpacity(0.25)),
-                        ),
-                        child: Center(
-                          child: text(text: '1', fontWeight: FontWeight.w500, size: 18),
-                        ),
-                      ),
-                      SizeBoxV(8),
-                      Container(
-                        height: 40,
-                        width: 40,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(100),
-                          color: AppColor.appPrimary,
-                          boxShadow: [
-                            BoxShadow(color: AppColor.appPrimary.withOpacity(0.2), blurRadius: 4, offset: Offset(2, 2)),
-                          ],
-                        ),
-                        child: Icon(Icons.add, color: AppColor.white),
-                      ),
-                    ],
-                  ),
-                  SizeBoxH(30),
-                  button(
-                    name: 'Save',
-                    height: 50,
-                    fontSize: 15,
-                    width: double.infinity,
-                    onTap: () {},
-                    isLoading: false,
-                  ),
-                  SizeBoxH(40),
-                ],
-              ),
+        return const TreatmentDialogWidget();
+      },
+    );
+  }
+
+  void _editTreatment(BuildContext context, int index) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return TreatmentDialogWidget(editIndex: index);
+      },
+    );
+  }
+
+  void _removeTreatment(BuildContext context, int index, RegisterProvider provider) {
+    // Show confirmation dialog
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Remove Treatment'),
+          content: const Text('Are you sure you want to remove this treatment?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () {
+                provider.removeTreatment(index);
+                Navigator.pop(context);
+              },
+              child: const Text('Remove', style: TextStyle(color: Colors.red)),
             ),
-          ),
+          ],
         );
       },
     );
   }
-}
-
-class Treatment {
-  final int id;
-  final String name;
-  int maleCount;
-  int femaleCount;
-
-  Treatment({required this.id, required this.name, required this.maleCount, required this.femaleCount});
 }

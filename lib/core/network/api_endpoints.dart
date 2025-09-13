@@ -6,6 +6,10 @@ class Urls {
 
   //Home
   static const String home = '${baseUrl}PatientList';
+  static const String getBranchUrl = '${baseUrl}BranchList';
+  static const String treatmentList = '${baseUrl}TreatmentList';
+
+  static const String registerPatientUrl = '${baseUrl}PatientUpdate';
 
   //PatientList
 }

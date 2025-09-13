@@ -40,7 +40,7 @@ Widget text({
   );
 }
 
-button({
+Widget button({
   double? height,
   double? width,
   Color? color,
@@ -69,12 +69,20 @@ button({
       child: Center(
         child: isLoading
             ? const CupertinoActivityIndicator(color: AppColor.white)
-            : text(
-                text: name ?? 'Continue',
-                size: fontSize,
-                color: textColor,
-                fontWeight: fontWeight,
-                letterSpacing: 1,
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (isIcon) const Icon(Icons.add, color: AppColor.white, size: 20), // 👈 Icon shown conditionally
+                  if (isIcon) const SizedBox(width: 8), // 👈 Spacing between icon and text
+                  text(
+                    text: name ?? 'Continue',
+                    size: fontSize,
+                    color: textColor,
+                    fontWeight: fontWeight,
+                    letterSpacing: 1,
+                  ),
+                ],
               ),
       ),
     ),

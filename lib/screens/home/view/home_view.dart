@@ -1,3 +1,4 @@
+import 'package:ayurvedic_centre_app/core/routes/routes.dart';
 import 'package:ayurvedic_centre_app/core/util/app_color.dart';
 import 'package:ayurvedic_centre_app/core/util/responsive.dart';
 import 'package:ayurvedic_centre_app/core/util/sized_box.dart';
@@ -173,7 +174,15 @@ class HomeView extends StatelessWidget {
             SizeBoxH(30),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 20),
-              child: button(name: 'Register Now', height: 50, width: double.infinity, onTap: () {}),
+              child: button(
+                name: 'Register Now',
+                height: 50,
+                isLoading: false,
+                width: double.infinity,
+                onTap: () {
+                  Navigator.pushNamed(context, AppRoutes.register);
+                },
+              ),
             ),
             SizeBoxH(100),
           ],

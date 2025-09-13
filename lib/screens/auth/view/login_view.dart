@@ -82,6 +82,7 @@ class LoginView extends StatelessWidget {
                         button(
                           name: 'Login',
                           height: 50,
+                          isLoading: false,
                           onTap: () {
                             Navigator.pushNamed(context, AppRoutes.home);
                           },

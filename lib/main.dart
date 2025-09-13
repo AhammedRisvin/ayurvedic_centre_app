@@ -30,7 +30,8 @@ class MyApp extends StatelessWidget {
                 title: 'ClanOfPets',
                 theme: ThemeData(
                   fontFamily: GoogleFonts.poppins().fontFamily,
-                  appBarTheme: const AppBarTheme(surfaceTintColor: AppColor.white),
+                  scaffoldBackgroundColor: AppColor.white,
+                  appBarTheme: const AppBarTheme(surfaceTintColor: AppColor.white, backgroundColor: AppColor.white),
                   colorScheme: ColorScheme.fromSeed(seedColor: AppColor.appPrimary),
                 ),
                 debugShowCheckedModeBanner: false,

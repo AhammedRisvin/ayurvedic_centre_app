@@ -158,7 +158,10 @@ Widget buildCommonTextFormField({
   bool isFromPhoneText = false,
   TextAlignVertical textAlignVertical = TextAlignVertical.center,
   int hintTextSize = 16,
+  Color? backgroundColor,
 }) {
+  final Color effectiveBgColor = backgroundColor ?? AppColor.textFormFieldBg;
+
   return TextFormField(
     inputFormatters: inputFormatters,
     onChanged: onChanged,
@@ -175,7 +178,7 @@ Widget buildCommonTextFormField({
     decoration: InputDecoration(
       prefixIcon: prefixIcon,
       counterText: '',
-      contentPadding: contentPadding, // Adjusts placement
+      contentPadding: contentPadding,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(radius),
         borderSide: isFromPhoneText ? BorderSide.none : BorderSide(color: borderColor),
@@ -194,16 +197,16 @@ Widget buildCommonTextFormField({
       ),
       floatingLabelBehavior: FloatingLabelBehavior.never,
       suffixIcon: suffixIcon,
-      fillColor: AppColor.textFormFieldBg,
-      filled: true,
-      hintText: hintText, // **Use hintText instead of labelText**
+      fillColor: effectiveBgColor, // ✅ Dynamic background
+      filled: effectiveBgColor != Colors.transparent, // ✅ Fill only if not transparent
+      hintText: hintText,
       hintStyle: TextStyle(
         color: hintTextColor,
         fontWeight: FontWeight.w400,
         fontSize: hintTextSize.toDouble(),
         fontFamily: GoogleFonts.urbanist().fontFamily,
       ),
-      alignLabelWithHint: true, // **Important: Moves hint to the top**
+      alignLabelWithHint: true,
     ),
     validator: validator,
     maxLength: maxLength,
@@ -211,6 +214,6 @@ Widget buildCommonTextFormField({
     readOnly: readOnly,
     minLines: minLine,
     maxLines: maxLine,
-    textAlignVertical: TextAlignVertical.top,
+    textAlignVertical: textAlignVertical,
   );
 }

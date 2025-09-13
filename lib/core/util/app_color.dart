@@ -10,4 +10,5 @@ class AppColor {
   static Color textFormFieldBg = Color(0xffd9d9d9).withOpacity(0.25);
   static Color blueColor = const Color(0xFF092e5a);
   static Color redColor = const Color(0xFFd63031);
+  static Color greenColor = const Color(0xFF389A48);
 }

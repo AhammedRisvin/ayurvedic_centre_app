@@ -36,11 +36,7 @@ class _RegisterViewContent extends StatelessWidget {
                   if (provider.generalError != null) _buildGeneralErrorWidget(provider.generalError!),
                   _buildBasicInfoSection(provider, context),
                   _buildLocationSection(provider, context),
-                  TreatmentSelectionWidget(
-                    onAddTreatment: provider.addTreatment,
-                    onRemoveTreatment: provider.removeTreatment,
-                    onUpdateCount: provider.updateTreatmentCount,
-                  ),
+                  TreatmentSelectionWidget(),
                   _buildAmountSection(provider, context),
                   PaymentSelectionWidget(
                     initialSelection: provider.selectedPayment,

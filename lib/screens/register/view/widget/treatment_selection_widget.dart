@@ -5,18 +5,9 @@ import '../../../../core/util/common_widgets.dart';
 import '../../../../core/util/sized_box.dart';
 
 class TreatmentSelectionWidget extends StatefulWidget {
-  final List<Treatment>? treatments;
-  final VoidCallback? onAddTreatment;
-  final Function(int)? onRemoveTreatment;
-  final Function(int, int, int)? onUpdateCount; // treatmentIndex, genderType (0=male, 1=female), count
+  // treatmentIndex, genderType (0=male, 1=female), count
 
-  const TreatmentSelectionWidget({
-    super.key,
-    this.treatments,
-    this.onAddTreatment,
-    this.onRemoveTreatment,
-    this.onUpdateCount,
-  });
+  const TreatmentSelectionWidget({super.key});
 
   @override
   State<TreatmentSelectionWidget> createState() => _TreatmentSelectionWidgetState();
@@ -31,9 +22,6 @@ class _TreatmentSelectionWidgetState extends State<TreatmentSelectionWidget> {
   @override
   void initState() {
     super.initState();
-    if (widget.treatments != null) {
-      treatments = widget.treatments!;
-    }
   }
 
   @override
@@ -99,7 +87,7 @@ class _TreatmentSelectionWidgetState extends State<TreatmentSelectionWidget> {
         ),
         const SizeBoxV(10),
         GestureDetector(
-          onTap: () => _removeTreatment(index),
+          onTap: () {},
           child: CircleAvatar(
             radius: 14,
             backgroundColor: const Color(0xffF21E1E).withOpacity(0.5),
@@ -124,7 +112,7 @@ class _TreatmentSelectionWidgetState extends State<TreatmentSelectionWidget> {
         ),
         const SizeBoxV(40),
         GestureDetector(
-          onTap: () => _editTreatment(index),
+          onTap: () {},
           child: Icon(Icons.edit_outlined, color: AppColor.greenColor),
         ),
       ],
@@ -136,16 +124,13 @@ class _TreatmentSelectionWidgetState extends State<TreatmentSelectionWidget> {
       children: [
         text(text: gender, size: 15, fontWeight: FontWeight.w400, color: AppColor.appPrimary),
         const SizeBoxV(10),
-        GestureDetector(
-          onTap: () => _showCountPicker(treatmentIndex, genderType, count),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 2),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(2),
-              border: Border.all(color: AppColor.black.withOpacity(0.5)),
-            ),
-            child: text(text: count.toString(), size: 16, fontWeight: FontWeight.w400, color: AppColor.appPrimary),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 2),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(2),
+            border: Border.all(color: AppColor.black.withOpacity(0.5)),
           ),
+          child: text(text: count.toString(), size: 16, fontWeight: FontWeight.w400, color: AppColor.appPrimary),
         ),
       ],
     );
@@ -163,78 +148,179 @@ class _TreatmentSelectionWidgetState extends State<TreatmentSelectionWidget> {
         fontSize: 15,
         width: double.infinity,
         onTap: () {
-          if (widget.onAddTreatment != null) {
-            widget.onAddTreatment!();
-          } else {
-            _addTreatment();
-          }
+          showCustomDialog(context);
         },
         isLoading: false,
       ),
     );
   }
 
-  void _addTreatment() {
-    setState(() {
-      treatments.add(Treatment(id: treatments.length + 1, name: 'New Treatment', maleCount: 1, femaleCount: 1));
-    });
-  }
-
-  void _removeTreatment(int index) {
-    setState(() {
-      treatments.removeAt(index);
-    });
-    if (widget.onRemoveTreatment != null) {
-      widget.onRemoveTreatment!(index);
-    }
-  }
-
-  void _editTreatment(int index) {
-    // Navigate to edit treatment screen or show edit dialog
-    // Implementation depends on your requirements
-  }
-
-  void _showCountPicker(int treatmentIndex, int genderType, int currentCount) {
+  void showCustomDialog(BuildContext context) {
     showDialog(
       context: context,
+      barrierDismissible: true,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Select Count'),
-          content: SizedBox(
-            width: 300,
-            height: 200,
-            child: ListView.builder(
-              itemCount: 10,
-              itemBuilder: (context, index) {
-                int count = index + 1;
-                return ListTile(
-                  title: Text(count.toString()),
-                  selected: count == currentCount,
-                  onTap: () {
-                    _updateCount(treatmentIndex, genderType, count);
-                    Navigator.of(context).pop();
-                  },
-                );
-              },
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizeBoxH(40),
+                  text(text: 'Choose Treatment', size: 16, fontWeight: FontWeight.w400, letterSpacing: 1.4),
+                  SizeBoxH(6),
+                  buildCommonTextFormField(
+                    hintText: 'Choose preferred treatment',
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                    controller: TextEditingController(),
+                    context: context,
+                    validator: (p0) {
+                      return null;
+                    },
+                    obscureText: false,
+                    onTap: () {},
+                    onFieldSubmitted: (p0) {},
+                    suffixIcon: Icon(Icons.keyboard_arrow_down_rounded, color: AppColor.appPrimary),
+                  ),
+                  SizeBoxH(20),
+                  text(text: 'Add Patients', size: 16, fontWeight: FontWeight.w400, letterSpacing: 1.4),
+                  SizeBoxH(6),
+                  Row(
+                    children: [
+                      Container(
+                        height: 50,
+                        width: 124,
+                        padding: EdgeInsets.only(left: 10),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8.53),
+                          border: Border.all(color: AppColor.black.withOpacity(0.25)),
+                          color: Color(0XFFD9D9D9).withOpacity(0.25),
+                        ),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: text(text: 'Male', fontWeight: FontWeight.w300, size: 14),
+                        ),
+                      ),
+                      Spacer(),
+                      Container(
+                        height: 40,
+                        width: 40,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(100),
+                          color: AppColor.appPrimary,
+                          boxShadow: [
+                            BoxShadow(color: AppColor.appPrimary.withOpacity(0.2), blurRadius: 4, offset: Offset(2, 2)),
+                          ],
+                        ),
+                        child: Icon(Icons.remove, color: AppColor.white),
+                      ),
+                      SizeBoxV(8),
+                      Container(
+                        height: 44,
+                        width: 44,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8.53),
+                          border: Border.all(color: AppColor.black.withOpacity(0.25)),
+                        ),
+                        child: Center(
+                          child: text(text: '1', fontWeight: FontWeight.w500, size: 18),
+                        ),
+                      ),
+                      SizeBoxV(8),
+                      Container(
+                        height: 40,
+                        width: 40,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(100),
+                          color: AppColor.appPrimary,
+                          boxShadow: [
+                            BoxShadow(color: AppColor.appPrimary.withOpacity(0.2), blurRadius: 4, offset: Offset(2, 2)),
+                          ],
+                        ),
+                        child: Icon(Icons.add, color: AppColor.white),
+                      ),
+                    ],
+                  ),
+                  SizeBoxH(22),
+                  Row(
+                    children: [
+                      Container(
+                        height: 50,
+                        width: 124,
+                        padding: EdgeInsets.only(left: 10),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8.53),
+                          border: Border.all(color: AppColor.black.withOpacity(0.25)),
+                          color: Color(0XFFD9D9D9).withOpacity(0.25),
+                        ),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: text(text: 'Female', fontWeight: FontWeight.w300, size: 14),
+                        ),
+                      ),
+                      Spacer(),
+                      Container(
+                        height: 40,
+                        width: 40,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(100),
+                          color: AppColor.appPrimary,
+                          boxShadow: [
+                            BoxShadow(color: AppColor.appPrimary.withOpacity(0.2), blurRadius: 4, offset: Offset(2, 2)),
+                          ],
+                        ),
+                        child: Icon(Icons.remove, color: AppColor.white),
+                      ),
+                      SizeBoxV(8),
+                      Container(
+                        height: 44,
+                        width: 44,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8.53),
+                          border: Border.all(color: AppColor.black.withOpacity(0.25)),
+                        ),
+                        child: Center(
+                          child: text(text: '1', fontWeight: FontWeight.w500, size: 18),
+                        ),
+                      ),
+                      SizeBoxV(8),
+                      Container(
+                        height: 40,
+                        width: 40,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(100),
+                          color: AppColor.appPrimary,
+                          boxShadow: [
+                            BoxShadow(color: AppColor.appPrimary.withOpacity(0.2), blurRadius: 4, offset: Offset(2, 2)),
+                          ],
+                        ),
+                        child: Icon(Icons.add, color: AppColor.white),
+                      ),
+                    ],
+                  ),
+                  SizeBoxH(30),
+                  button(
+                    name: 'Save',
+                    height: 50,
+                    fontSize: 15,
+                    width: double.infinity,
+                    onTap: () {},
+                    isLoading: false,
+                  ),
+                  SizeBoxH(40),
+                ],
+              ),
             ),
           ),
         );
       },
     );
-  }
-
-  void _updateCount(int treatmentIndex, int genderType, int count) {
-    setState(() {
-      if (genderType == 0) {
-        treatments[treatmentIndex].maleCount = count;
-      } else {
-        treatments[treatmentIndex].femaleCount = count;
-      }
-    });
-
-    if (widget.onUpdateCount != null) {
-      widget.onUpdateCount!(treatmentIndex, genderType, count);
-    }
   }
 }
 

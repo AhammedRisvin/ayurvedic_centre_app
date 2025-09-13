@@ -13,8 +13,8 @@ class HomeView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: Icon(Icons.arrow_back, color: AppColor.black),
         actions: [Image.asset('assets/images/notificationBell.png', height: 28, width: 28), SizeBoxV(20)],
+        automaticallyImplyLeading: false,
       ),
       body: SingleChildScrollView(
         child: Column(

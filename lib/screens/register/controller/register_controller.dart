@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
+import '../view/widget/pdf_bill_generator.dart';
 
 class RegisterProvider extends ChangeNotifier {
   // Controllers for form fields
@@ -221,11 +222,16 @@ class RegisterProvider extends ChangeNotifier {
 
   // Treatment management methods
   void addTreatmentWithDetails(TreatmentOption treatmentOption, int maleCount, int femaleCount) {
+    final price = double.tryParse(treatmentOption.price ?? "0") ?? 0.0;
+    final total = (price * (maleCount + femaleCount));
+
     final newTreatment = Treatment(
       id: treatmentOption.id,
       name: treatmentOption.name,
       maleCount: maleCount,
       femaleCount: femaleCount,
+      price: price,
+      total: total,
     );
     _treatments.add(newTreatment);
     clearFieldError('treatments');
@@ -391,6 +397,20 @@ class RegisterProvider extends ChangeNotifier {
 
       if (statusCode >= 200 && statusCode < 300 && responseBody['status'] == true) {
         log('Registration successful: $responseBody');
+        await PdfService.generateAndSaveBill(
+          patientData: {
+            'name': nameController.text.trim(),
+            'address': addressController.text.trim(),
+            'phone': whatsappController.text.trim(),
+            'treatment_date': treatmentDateController.text,
+            'treatment_time': '${hourController.text}:${minuteController.text}',
+            'total_amount': double.tryParse(totalAmountController.text) ?? 0.0,
+            'discount_amount': double.tryParse(discountAmountController.text) ?? 0.0,
+            'advance_amount': double.tryParse(advanceAmountController.text) ?? 0.0,
+            'balance_amount': double.tryParse(balanceAmountController.text) ?? 0.0,
+          },
+          treatmentsList: _treatments.map((t) => t.toPdfMap()).toList(),
+        );
       } else {
         throw Exception(responseBody['message'] ?? 'Registration failed');
       }
@@ -659,10 +679,23 @@ class Treatment {
   String name;
   int maleCount;
   int femaleCount;
+  double price;
+  double total;
 
-  Treatment({required this.id, required this.name, required this.maleCount, required this.femaleCount});
+  Treatment({
+    required this.id,
+    required this.name,
+    required this.maleCount,
+    required this.femaleCount,
+    required this.price,
+    required this.total,
+  });
+
+  Map<String, dynamic> toPdfMap() {
+    return {'name': name, 'price': price, 'male_count': maleCount, 'female_count': femaleCount, 'total': total};
+  }
 
   Map<String, dynamic> toJson() {
-    return {'id': id, 'name': name, 'maleCount': maleCount, 'femaleCount': femaleCount};
+    return {'id': id, 'name': name, 'maleCount': maleCount, 'femaleCount': femaleCount, 'price': price, 'total': total};
   }
 }

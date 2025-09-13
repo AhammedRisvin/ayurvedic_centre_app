@@ -99,7 +99,6 @@ class _LoginViewState extends State<LoginView> {
           context: context,
           validator: (value) {
             if (value == null || value.isEmpty) return 'Email is required';
-            if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) return 'Enter a valid email';
             return null;
           },
           maxLine: 1,

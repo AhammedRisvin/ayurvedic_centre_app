@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:ayurvedic_centre_app/core/network/api_client.dart';
 import 'package:ayurvedic_centre_app/core/network/api_endpoints.dart';
 import 'package:flutter/material.dart';
@@ -16,13 +14,13 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> loginFn(String email, String password) async {
+  Future<bool> loginFn(String username, String password) async {
     _setLoading(true);
 
     try {
       final response = await ServerClient.post(
         Urls.login,
-        data: {"username": 'test_user', "password": '12345678'},
+        data: {"username": username, "password": password},
         useForm: true,
       );
 
@@ -30,16 +28,12 @@ class AuthProvider with ChangeNotifier {
       final responseBody = response[1];
 
       if (statusCode >= 200 && statusCode < 300 && responseBody['status'] == true) {
-        final token = responseBody['token'];
-        Store.userToken = token;
-        log('Login successful: $responseBody');
+        Store.userToken = responseBody['token'];
         return true;
       } else {
-        log('Login failed: $responseBody');
         return false;
       }
     } catch (e) {
-      debugPrint('Login error: $e');
       return false;
     } finally {
       _setLoading(false);

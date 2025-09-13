@@ -91,32 +91,51 @@ class ServerClient {
 
   static Future<List> _handleResponse(http.Response response) async {
     final statusCode = response.statusCode;
-    final contentType = response.headers['content-type'] ?? '';
-    final isJson = contentType.contains('application/json');
-    final body = isJson && response.body.isNotEmpty ? jsonDecode(response.body) : response.body;
+    dynamic body;
+
+    try {
+      // Always try decoding JSON if body is not empty
+      body = response.body.isNotEmpty ? jsonDecode(response.body) : null;
+    } catch (e) {
+      log('JSON decode error: $e');
+      body = null;
+    }
+
+    // Log the decoded body type for debugging
+    log('Decoded body type: ${body.runtimeType}');
 
     switch (statusCode) {
       case 200:
       case 201:
+        if (body == null || body is! Map<String, dynamic>) {
+          log('Warning: Expected JSON object but got ${body.runtimeType}');
+          return [statusCode, {}]; // safe fallback
+        }
         return [statusCode, body];
+
       case 400:
-        return [statusCode, body, isJson ? body["message"] : body];
+        return [statusCode, body, body is Map ? body["message"] : body];
+
       case 401:
       case 403:
       case 500:
       case 503:
-        return [statusCode, isJson ? body["message"] : body];
+        return [statusCode, body is Map ? body["message"] : body];
+
       case 404:
         return [statusCode, "You're using unregistered application"];
+
       case 502:
         return [statusCode, "Server Crashed or under maintenance"];
+
       case 504:
         return [
           statusCode,
           {"message": "Request timeout", "code": 504, "status": "Cancelled"},
         ];
+
       default:
-        return [statusCode, isJson ? body["message"] : body];
+        return [statusCode, body is Map ? body["message"] : body];
     }
   }
 }

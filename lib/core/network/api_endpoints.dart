@@ -3,9 +3,9 @@ class Urls {
 
   // Auth
   static const String login = '${baseUrl}Login';
-  static const String verifyOtp = '/user/verify-otp';
-  static const String register = '/user/register';
 
   //Home
-  static const String home = '/user/get-home';
+  static const String home = '${baseUrl}PatientList';
+
+  //PatientList
 }

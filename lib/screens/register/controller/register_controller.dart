@@ -350,7 +350,7 @@ class RegisterProvider extends ChangeNotifier {
     return isValid;
   }
 
-  Future<void> saveRegistration() async {
+  Future<void> saveRegistration(BuildContext context) async {
     if (!validateForm()) {
       _setGeneralError('Please fix the errors below');
       return;
@@ -360,7 +360,7 @@ class RegisterProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await registerFn();
+      await registerFn(context);
       _setGeneralError(null);
     } catch (e) {
       _setGeneralError('Failed to save registration: ${e.toString()}');
@@ -371,7 +371,7 @@ class RegisterProvider extends ChangeNotifier {
   }
 
   // API Calls
-  Future<void> registerFn() async {
+  Future<void> registerFn(BuildContext context) async {
     try {
       final data = {
         "name": nameController.text.trim(),
@@ -411,6 +411,7 @@ class RegisterProvider extends ChangeNotifier {
           },
           treatmentsList: _treatments.map((t) => t.toPdfMap()).toList(),
         );
+        Navigator.pop(context);
       } else {
         throw Exception(responseBody['message'] ?? 'Registration failed');
       }

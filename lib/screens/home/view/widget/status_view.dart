@@ -42,7 +42,6 @@ class StatusView extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             SizeBoxH(30),
-            // button(name: buttonText, height: 45, width: 160, onTap: onTap),
           ],
         ),
       ),

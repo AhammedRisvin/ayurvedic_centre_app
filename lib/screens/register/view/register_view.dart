@@ -381,7 +381,7 @@ class _RegisterViewState extends State<RegisterView> {
             name: 'Save',
             height: 50,
             width: double.infinity,
-            onTap: provider.saveRegistration,
+            onTap: () => provider.saveRegistration(context),
             isLoading: provider.isSaving,
           ),
         ),
